@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Browser SDK Usage Example</title>
+  <script src="https://manymetrics-sdk-lk1o4gzf.s3.eu-west-1.amazonaws.com/analytics.js"></script>
+  <script>
+    // Initialize
+    const mm = new ManyMetrics('15wj26vfna.execute-api.eu-west-1.amazonaws.com', 'YOUR_API_KEY');
+    mm.init();
+
+    // Identify the user
+    mm.identify('user-123', { name: 'John Doe', email: 'johndoe@example.com' });
+  </script>
+</head>
+
+<body>
+  <div>
+    <form id="myForm">
+      <label for="name">Name:</label>
+      <input type="text" id="name" name="name"><br><br>
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email"><br><br>
+      <input type="submit" value="Submit">
+    </form>
+  </div>
+
+  <br>
+
+  <div>
+    <button id="trackEvent" onclick="mm.track('Custom Event')">Track Custom Event</button>
+  </div>
+
+</body>
+
+</html>
