@@ -19,6 +19,11 @@ resource "aws_iam_role" "this" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "api_logs" {
+  role       = aws_iam_role.this.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
 resource "aws_iam_role_policy" "this" {
   name = "manymetrics-policy-${random_string.random.result}"
   role = aws_iam_role.this.id
@@ -28,12 +33,12 @@ resource "aws_iam_role_policy" "this" {
     Statement = [
       {
         Action = [
-          "kinesis:PutRecord",
-          "kinesis:PutRecords",
+          "firehose:PutRecord",
+          "firehose:PutRecordBatch",
         ]
-        Resource = aws_kinesis_stream.this.arn
+        Resource = aws_kinesis_firehose_delivery_stream.firehose.arn
         Effect   = "Allow"
-      },
+      }
     ]
   })
 }
@@ -76,7 +81,7 @@ resource "aws_api_gateway_integration" "events" {
   integration_http_method = "POST"
   type                    = "AWS"
   credentials             = aws_iam_role.this.arn
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:kinesis:action/PutRecord"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:firehose:action/PutRecord"
 
   passthrough_behavior = "NEVER"
 
@@ -87,9 +92,10 @@ resource "aws_api_gateway_integration" "events" {
   request_templates = {
     "application/json" = <<EOT
        {
-        "Data": "$util.base64Encode($input.body)",
-        "PartitionKey": "123",
-        "StreamName": "${aws_kinesis_stream.this.name}"
+        "Record": {
+          "Data": "$util.base64Encode($input.json('$'))"
+        },
+        "DeliveryStreamName": "${aws_kinesis_firehose_delivery_stream.firehose.name}"
        }
     EOT
   }
