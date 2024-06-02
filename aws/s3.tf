@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "data" {
-    bucket = "manymetrics-data-${random_string.random.result}"
+  bucket = "manymetrics-data-${random_string.random.result}"
 }
 
 resource "aws_s3_bucket_public_access_block" "data" {

@@ -13,3 +13,7 @@ output "role_arn" {
 output "role_name" {
   value = aws_iam_role.this.name
 }
+
+output "ecr_event_lambda_name" {
+  value = aws_ecr_repository.ecr.name
+}

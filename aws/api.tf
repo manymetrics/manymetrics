@@ -33,10 +33,10 @@ resource "aws_iam_role_policy" "this" {
     Statement = [
       {
         Action = [
-          "firehose:PutRecord",
-          "firehose:PutRecordBatch",
+          "kinesis:PutRecord",
+          "kinesis:PutRecords",
         ]
-        Resource = aws_kinesis_firehose_delivery_stream.firehose.arn
+        Resource = aws_kinesis_stream.stream.arn
         Effect   = "Allow"
       }
     ]
@@ -81,7 +81,7 @@ resource "aws_api_gateway_integration" "events" {
   integration_http_method = "POST"
   type                    = "AWS"
   credentials             = aws_iam_role.this.arn
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:firehose:action/PutRecord"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:kinesis:action/PutRecord"
 
   passthrough_behavior = "NEVER"
 
@@ -92,10 +92,9 @@ resource "aws_api_gateway_integration" "events" {
   request_templates = {
     "application/json" = <<EOT
        {
-        "Record": {
-          "Data": "$util.base64Encode($input.json('$'))"
-        },
-        "DeliveryStreamName": "${aws_kinesis_firehose_delivery_stream.firehose.name}"
+        "Data": "$util.base64Encode($input.body)",
+        "PartitionKey": "123",
+        "StreamName": "${aws_kinesis_stream.stream.name}"
        }
     EOT
   }
@@ -174,7 +173,7 @@ resource "aws_api_gateway_integration_response" "events_400" {
 }
 
 module "events_cors" {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.this.id
