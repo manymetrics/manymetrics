@@ -16,15 +16,12 @@ from pyspark.sql.functions import current_timestamp
 from pyspark.sql.functions import udf
 
 
-BASE_SCHEMA = StructType(
-    [
-        StructField("event", StringType(), nullable=False),
-        StructField("timestamp", TimestampType(), nullable=False),
-    ]
-)
 BASE_DDL = """CREATE TABLE IF NOT EXISTS {table_identifier} (
-    timestamp timestamp,
-    event string
+    timestamp timestamp NOT NULL,
+    event_type string NOT NULL,
+    user_id string NOT NULL,
+    session_id string NOT NULL,
+    path string
 ) USING iceberg
 PARTITIONED BY (days(timestamp))
 LOCATION '{target_path}'
@@ -32,7 +29,7 @@ TBLPROPERTIES ('table_type'='ICEBERG', 'classification' = 'parquet')
 ;"""
 
 
-def spark_script(json_array):
+def spark_script(batches):
     # aws_region = os.environ["AWS_REGION"]
     aws_access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
     aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]
@@ -42,8 +39,42 @@ def spark_script(json_array):
     database_name = os.environ["GLUE_DATABASE_NAME"]
     table_name = "events"
     target_path = os.environ["EVENTS_S3_URI"]
+    table_identifier = f"{catalog_name}.{database_name}.{table_name}"
 
-    spark = (
+    spark = _setup_spark(aws_access_key_id, aws_secret_access_key, target_path)
+
+    if not spark.catalog.tableExists(f"{database_name}.{table_name}"):
+        print(f"Table {table_identifier} does not exist, creating")
+        spark.sql(
+            BASE_DDL.format(table_identifier=table_identifier, target_path=target_path)
+        )
+    else:
+        print(f"Table {table_identifier} exists")
+
+    table = spark.table(table_identifier)
+    print(f"Table schema: {table.schema}")
+
+    events = []
+    for batch in batches:
+        for event in batch:
+            updated_event = {_camel_to_snake(k): v for k, v in event.items()}
+            updated_event["timestamp"] = datetime.fromtimestamp(
+                updated_event["timestamp"] / 1000, timezone.utc
+            )
+            events.append(updated_event)
+
+    print(f"Events: {events}")
+
+    # create dataframe form the lambda payload
+    df = spark.createDataFrame(data=events, schema=table.schema).withColumn(
+        "timestamp", current_timestamp()
+    )
+    df.printSchema()
+    df.writeTo(table_identifier).append()
+
+
+def _setup_spark(aws_access_key_id, aws_secret_access_key, warehouse_location):
+    return (
         SparkSession.builder.appName("Spark-on-AWS-Lambda")
         .master("local[*]")
         .config("spark.driver.bindAddress", "127.0.0.1")
@@ -66,7 +97,7 @@ def spark_script(json_array):
             "spark.sql.catalog.AwsDataCatalog.catalog-impl",
             "org.apache.iceberg.aws.glue.GlueCatalog",
         )
-        .config("spark.sql.catalog.AwsDataCatalog.warehouse", target_path)
+        .config("spark.sql.catalog.AwsDataCatalog.warehouse", warehouse_location)
         .config(
             "spark.hadoop.hive.metastore.client.factory.class",
             "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
@@ -75,31 +106,9 @@ def spark_script(json_array):
         .getOrCreate()
     )
 
-    table_identifier = f"{catalog_name}.{database_name}.{table_name}"
 
-    if spark.catalog._jcatalog.tableExists(
-        f"{database_name}.{table_name}"
-    ):  # not spark.catalog.tableExists(table_identifier):
-        print(f"Table {table_identifier} does not exist, creating")
-        spark.sql(
-            BASE_DDL.format(table_identifier=table_identifier, target_path=target_path)
-        )
-    else:
-        print(f"Table {table_identifier} exists")
-
-    for r in json_array:
-        # del r["timestamp"]
-        r["timestamp"] = datetime.fromtimestamp(r["timestamp"], timezone.utc)
-
-    data = [{"event": "test", "timestamp": datetime.now(timezone.utc)}]
-
-    # create dataframe form the lambda payload
-    df = spark.createDataFrame(data=data, schema=BASE_SCHEMA).withColumn(
-        "timestamp", current_timestamp()
-    )
-    # df = df.withColumn("last_upd_timestamp", current_timestamp())
-    df.printSchema()
-    df.writeTo(table_identifier).append()
+def _camel_to_snake(s):
+    return "".join(["_" + c.lower() if c.isupper() else c for c in s]).lstrip("_")
 
 
 def decode_base64(encoded_str):
@@ -114,11 +123,11 @@ if __name__ == "__main__":
     # convert the events array into object and send to spark
     decode_base64_udf = udf(decode_base64, StringType())
     json_obj = json.loads(args.event)
-    json_array = []
+    batches = []
     for record in json_obj["Records"]:
-        json_array.append(
+        batches.append(
             json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8"))
         )
 
     # Calling the Spark script method
-    spark_script(json_array)
+    spark_script(batches)
