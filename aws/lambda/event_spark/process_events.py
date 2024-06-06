@@ -17,19 +17,22 @@ from pyspark.sql.functions import udf
 
 
 BASE_DDL = """CREATE TABLE IF NOT EXISTS {table_identifier} (
-    timestamp timestamp NOT NULL,
+    event_time timestamp NOT NULL,
     event_type string NOT NULL,
     user_id string NOT NULL,
     session_id string NOT NULL,
+    client_event_time timestamp NOT NULL,
+    server_event_time timestamp NOT NULL,
+    ip_address string,
     path string
 ) USING iceberg
-PARTITIONED BY (days(timestamp))
+PARTITIONED BY (days(event_time))
 LOCATION '{target_path}'
 TBLPROPERTIES ('table_type'='ICEBERG', 'classification' = 'parquet')
 ;"""
 
 
-def spark_script(batches):
+def spark_script(records):
     # aws_region = os.environ["AWS_REGION"]
     aws_access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
     aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]
@@ -54,21 +57,20 @@ def spark_script(batches):
     table = spark.table(table_identifier)
     print(f"Table schema: {table.schema}")
 
+    print(f"Records: {records}")
+
     events = []
-    for batch in batches:
-        for event in batch:
-            updated_event = {_camel_to_snake(k): v for k, v in event.items()}
-            updated_event["timestamp"] = datetime.fromtimestamp(
-                updated_event["timestamp"] / 1000, timezone.utc
-            )
-            events.append(updated_event)
+    for event in records:
+        event["server_event_time"] = datetime.fromisoformat(
+            event["server_event_time"].replace("Z", "+00:00")
+        )
+        event["client_event_time"] = datetime.fromisoformat(
+            event["client_event_time"].replace("Z", "+00:00")
+        )
+        event["event_time"] = event["server_event_time"]
+        events.append(event)
 
-    print(f"Events: {events}")
-
-    # create dataframe form the lambda payload
-    df = spark.createDataFrame(data=events, schema=table.schema).withColumn(
-        "timestamp", current_timestamp()
-    )
+    df = spark.createDataFrame(data=events, schema=table.schema)
     df.printSchema()
     df.writeTo(table_identifier).append()
 
@@ -123,11 +125,11 @@ if __name__ == "__main__":
     # convert the events array into object and send to spark
     decode_base64_udf = udf(decode_base64, StringType())
     json_obj = json.loads(args.event)
-    batches = []
+    records = []
     for record in json_obj["Records"]:
-        batches.append(
+        records.append(
             json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8"))
         )
 
     # Calling the Spark script method
-    spark_script(batches)
+    spark_script(records)
