@@ -1,8 +1,63 @@
-resource "aws_api_gateway_rest_api" "this" {
-  name = "manymetrics-api-${random_string.random.result}"
+resource "aws_apigatewayv2_api" "api" {
+  name          = "manymetrics-api-${random_string.random.result}"
+  protocol_type = "HTTP"
 }
 
-resource "aws_iam_role" "this" {
+resource "aws_apigatewayv2_stage" "api" {
+  api_id = aws_apigatewayv2_api.api.id
+
+  name        = "$default"
+  auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw.arn
+
+    format = jsonencode({
+      requestId               = "$context.requestId"
+      sourceIp                = "$context.identity.sourceIp"
+      requestTime             = "$context.requestTime"
+      protocol                = "$context.protocol"
+      httpMethod              = "$context.httpMethod"
+      resourcePath            = "$context.resourcePath"
+      routeKey                = "$context.routeKey"
+      status                  = "$context.status"
+      responseLength          = "$context.responseLength"
+      integrationErrorMessage = "$context.integrationErrorMessage"
+      }
+    )
+  }
+}
+
+resource "aws_cloudwatch_log_group" "api_gw" {
+  name              = "/aws/api_gw/${aws_apigatewayv2_api.api.name}"
+  retention_in_days = 7
+}
+
+resource "aws_apigatewayv2_integration" "api" {
+  api_id = aws_apigatewayv2_api.api.id
+
+  integration_uri    = aws_lambda_function.api.invoke_arn
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+}
+
+resource "aws_apigatewayv2_route" "api" {
+  api_id = aws_apigatewayv2_api.api.id
+
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
+
+resource "aws_lambda_permission" "api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_iam_role" "api" {
   name = "manymetrics-role-${random_string.random.result}"
 
   assume_role_policy = jsonencode({
@@ -11,7 +66,7 @@ resource "aws_iam_role" "this" {
       {
         Action = "sts:AssumeRole"
         Principal = {
-          Service = "apigateway.amazonaws.com"
+          Service = "lambda.amazonaws.com"
         }
         Effect = "Allow"
       },
@@ -19,14 +74,14 @@ resource "aws_iam_role" "this" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "api_logs" {
-  role       = aws_iam_role.this.name
+resource "aws_iam_role_policy_attachment" "api_gw_logs" {
+  role       = aws_iam_role.api.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
 
-resource "aws_iam_role_policy" "this" {
+resource "aws_iam_role_policy" "api" {
   name = "manymetrics-policy-${random_string.random.result}"
-  role = aws_iam_role.this.id
+  role = aws_iam_role.api.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -43,139 +98,25 @@ resource "aws_iam_role_policy" "this" {
   })
 }
 
-resource "aws_api_gateway_deployment" "this" {
-  rest_api_id = aws_api_gateway_rest_api.this.id
-  stage_name  = "prod"
-  depends_on  = [aws_api_gateway_integration.events]
-
-  triggers = {
-    redeployment = timestamp()
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
+data "archive_file" "api" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/api_lambda/lambda_handler.py"
+  output_path = "${path.module}/lambda_function_payload.zip"
 }
 
-resource "aws_api_gateway_resource" "events" {
-  rest_api_id = aws_api_gateway_rest_api.this.id
-  parent_id   = aws_api_gateway_rest_api.this.root_resource_id
-  path_part   = "e"
-}
+resource "aws_lambda_function" "api" {
+  filename      = data.archive_file.api.output_path
+  function_name = "manymetrics-api-${random_string.random.result}"
+  role          = aws_iam_role.api.arn
+  handler       = "lambda_handler.lambda_handler"
 
-resource "aws_api_gateway_method" "events" {
-  rest_api_id   = aws_api_gateway_rest_api.this.id
-  resource_id   = aws_api_gateway_resource.events.id
-  http_method   = "POST"
-  authorization = "NONE"
-  # request_models = {
-  #   "application/json" = aws_api_gateway_model.model.name
-  # }
-  # request_validator_id = aws_api_gateway_request_validator.validator.id
-}
+  source_code_hash = data.archive_file.api.output_base64sha256
 
-resource "aws_api_gateway_integration" "events" {
-  rest_api_id             = aws_api_gateway_rest_api.this.id
-  resource_id             = aws_api_gateway_resource.events.id
-  http_method             = aws_api_gateway_method.events.http_method
-  integration_http_method = "POST"
-  type                    = "AWS"
-  credentials             = aws_iam_role.this.arn
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:kinesis:action/PutRecord"
+  runtime = "python3.12"
 
-  passthrough_behavior = "NEVER"
-
-  request_parameters = {
-    "integration.request.header.Content-Type" = "'application/x-amz-json-1.1'"
+  environment {
+    variables = {
+      KINESIS_STREAM_NAME = aws_kinesis_stream.stream.name
+    }
   }
-
-  request_templates = {
-    "application/json" = <<EOT
-       {
-        "Data": "$util.base64Encode($input.body)",
-        "PartitionKey": "123",
-        "StreamName": "${aws_kinesis_stream.stream.name}"
-       }
-    EOT
-  }
-}
-
-resource "aws_api_gateway_method_response" "events_200" {
-  http_method = aws_api_gateway_method.events.http_method
-  resource_id = aws_api_gateway_resource.events.id
-  rest_api_id = aws_api_gateway_rest_api.this.id
-  status_code = 200
-
-  response_parameters = {
-    "method.response.header.Content-Type"                = true
-    "method.response.header.Access-Control-Allow-Origin" = true
-  }
-}
-
-
-resource "aws_api_gateway_method_response" "events_400" {
-  http_method = aws_api_gateway_method.events.http_method
-  resource_id = aws_api_gateway_resource.events.id
-  rest_api_id = aws_api_gateway_rest_api.this.id
-  status_code = 400
-
-  response_parameters = {
-    "method.response.header.Content-Type"                = true
-    "method.response.header.Access-Control-Allow-Origin" = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "events_200" {
-  rest_api_id = aws_api_gateway_rest_api.this.id
-  resource_id = aws_api_gateway_resource.events.id
-  http_method = aws_api_gateway_method.events.http_method
-  status_code = aws_api_gateway_method_response.events_200.status_code
-
-  response_parameters = {
-    "method.response.header.Content-Type"                = "'application/json'"
-    "method.response.header.Access-Control-Allow-Origin" = "'*'"
-  }
-
-  response_templates = {
-    "application/json" = <<EOT
-      {
-        "state": "ok"
-      }
-    EOT
-  }
-
-  depends_on = [aws_api_gateway_integration.events]
-}
-
-resource "aws_api_gateway_integration_response" "events_400" {
-  rest_api_id = aws_api_gateway_rest_api.this.id
-  resource_id = aws_api_gateway_resource.events.id
-  http_method = aws_api_gateway_method.events.http_method
-  status_code = aws_api_gateway_method_response.events_400.status_code
-
-  selection_pattern = "4\\d{2}"
-
-  response_templates = {
-    "application/json" = <<EOT
-      {
-        "state": "error",
-        "message": "$util.escapeJavaScript($input.path('$.errorMessage'))"
-      }
-    EOT
-  }
-
-  response_parameters = {
-    "method.response.header.Content-Type"                = "'application/json'"
-    "method.response.header.Access-Control-Allow-Origin" = "'*'"
-  }
-
-  depends_on = [aws_api_gateway_integration.events]
-}
-
-module "events_cors" {
-  source  = "squidfunk/api-gateway-enable-cors/aws"
-  version = "0.3.3"
-
-  api_id          = aws_api_gateway_rest_api.this.id
-  api_resource_id = aws_api_gateway_resource.events.id
 }

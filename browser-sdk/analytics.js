@@ -6,7 +6,6 @@ class ManyMetrics {
         this.userId = null;
         this.sessionId = null;
         this.identified = false;
-        this.queue = [];
         this.formElements = [];
     }
 
@@ -18,15 +17,14 @@ class ManyMetrics {
 
     track(eventType, properties = {}) {
         const event = {
-            eventType: eventType,
+            event_type: eventType,
             properties,
-            userId: this.userId,
-            sessionId: this.sessionId,
+            user_id: this.userId,
+            session_id: this.sessionId,
             path: window.location.pathname,
-            timestamp: new Date().getTime()
+            client_event_time: new Date().toISOString()
         };
-        this.queue.push(event);
-        this.flush();
+        this.sendEvent(event);
     }
 
     page(properties = {}) {
@@ -37,31 +35,26 @@ class ManyMetrics {
     //     this.track('alias', { newId, originalId });
     // }
 
-    flush() {
-        if (this.queue.length > 0) {
-            const events = this.queue.splice(0, this.queue.length);
-            this.sendEvents(events);
-        }
-    }
+    sendEvent(event) {
+        console.log('Sending event:', event);
 
-    sendEvents(events) {
-        fetch(`https://${this.instance}/prod/e`, {
+        fetch(`https://${this.instance}/track`, {
             method: 'POST',
             mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(events)
+            body: JSON.stringify(event)
         })
             .then(response => {
                 if (response.ok) {
-                    console.log('Events sent successfully!');
+                    console.log('Event sent successfully!');
                 } else {
-                    console.error('Error sending events:', response.statusText);
+                    console.error('Error sending event:', response.statusText);
                 }
             })
             .catch(error => {
-                console.error('Error sending events:', error);
+                console.error('Error sending event:', error);
             });
     }
 
