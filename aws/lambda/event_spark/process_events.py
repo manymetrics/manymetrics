@@ -5,15 +5,6 @@ import json
 import os
 
 from pyspark.sql import SparkSession
-from pyspark.sql.types import (
-    LongType,
-    StringType,
-    StructField,
-    StructType,
-    TimestampType,
-)
-from pyspark.sql.functions import current_timestamp
-from pyspark.sql.functions import udf
 
 
 BASE_DDL = """CREATE TABLE IF NOT EXISTS {table_identifier} (
@@ -109,10 +100,6 @@ def _setup_spark(aws_access_key_id, aws_secret_access_key, warehouse_location):
     )
 
 
-def _camel_to_snake(s):
-    return "".join(["_" + c.lower() if c.isupper() else c for c in s]).lstrip("_")
-
-
 def decode_base64(encoded_str):
     return base64.b64decode(encoded_str).decode("utf-8")
 
@@ -122,8 +109,6 @@ if __name__ == "__main__":
     parser.add_argument("--event", help="events from lambda")
     args = parser.parse_args()
 
-    # convert the events array into object and send to spark
-    decode_base64_udf = udf(decode_base64, StringType())
     json_obj = json.loads(args.event)
     records = []
     for record in json_obj["Records"]:
@@ -131,5 +116,4 @@ if __name__ == "__main__":
             json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8"))
         )
 
-    # Calling the Spark script method
     spark_script(records)
