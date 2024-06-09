@@ -57,7 +57,7 @@ COPY bin/spark-class $SPARK_HOME/bin/spark-class
 RUN chmod -R 755 $SPARK_HOME
 
 # Copy the Pyspark script to container
-COPY spark_lambda_handler.py process_events.py ${LAMBDA_TASK_ROOT}
+COPY lambda_handler.py process_events.py ${LAMBDA_TASK_ROOT}
 
 # calling the Lambda handler
-CMD [ "/var/task/spark_lambda_handler.lambda_handler" ]
+CMD [ "/var/task/lambda_handler.lambda_handler" ]
