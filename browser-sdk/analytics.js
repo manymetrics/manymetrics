@@ -1,12 +1,10 @@
 class ManyMetrics {
-    constructor(instance, apiKey, options = {}) {
+    constructor(instance, apiKey) {
         this.instance = instance;
         this.apiKey = apiKey;
-        this.options = options;
         this.userId = null;
         this.sessionId = null;
         this.identified = false;
-        this.formElements = [];
     }
 
     identify(userId, traits = {}) {
@@ -16,13 +14,27 @@ class ManyMetrics {
     }
 
     track(eventType, properties = {}) {
+        const reservedKeys = ['event_type', 'properties', 'user_id', 'session_id', 'path', 'client_event_time'];
+        for (const key in properties) {
+            if (reservedKeys.includes(key)) {
+                throw new Error(`Reserved property key: ${key}`);
+            }
+        }
+
+        // it isn't easy to handle property types, using strings for now
+        const strProperties = {};
+        for (const key in properties) {
+            strProperties[key] = properties[key].toString();
+        }
+
         const event = {
             event_type: eventType,
-            properties,
             user_id: this.userId,
             session_id: this.sessionId,
             path: window.location.pathname,
-            client_event_time: new Date().toISOString()
+            client_event_time: new Date().toISOString(),
+            host: window.location.host,
+            ...strProperties
         };
         this.sendEvent(event);
     }
@@ -100,7 +112,7 @@ class ManyMetrics {
 
     trackPageViews() {
         // track current page view
-        this.page({ referrer: document });
+        this.page({ referrer: document.referrer });
 
         const self = this;
         window.addEventListener('popstate', function () {
@@ -116,7 +128,6 @@ class ManyMetrics {
         document.addEventListener('DOMContentLoaded', function () {
             const forms = document.querySelectorAll('form');
             forms.forEach(form => {
-                self.formElements.push(form);
                 form.addEventListener('submit', function (event) {
                     self.track('Form Submitted'); //, { formId: form.id, formData: self.getFormData(form) });
                 });

@@ -15,6 +15,7 @@ BASE_DDL = """CREATE TABLE IF NOT EXISTS {table_identifier} (
     client_event_time timestamp NOT NULL,
     server_event_time timestamp NOT NULL,
     ip_address string,
+    host string,
     path string
 ) USING iceberg
 PARTITIONED BY (days(event_time))
@@ -51,7 +52,10 @@ def spark_script(records):
     print(f"Records: {records}")
 
     events = []
+    event_columns = set()
     for event in records:
+        event_columns.update(event.keys())
+
         event["server_event_time"] = datetime.fromisoformat(
             event["server_event_time"].replace("Z", "+00:00")
         )
@@ -60,6 +64,11 @@ def spark_script(records):
         )
         event["event_time"] = event["server_event_time"]
         events.append(event)
+
+    for column in event_columns:
+        if column not in table.schema.names:
+            print(f"Adding column {column} to table schema")
+            spark.sql(f"ALTER TABLE {table_identifier} ADD COLUMN {column} string")
 
     df = spark.createDataFrame(data=events, schema=table.schema)
     df.printSchema()
