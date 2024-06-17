@@ -15,4 +15,6 @@ wget -q https://repo1.maven.org/maven2/software/amazon/awssdk/url-connection-cli
 
 ### Running locally
 
+`export JAVA_HOME='/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/Home'`
+
 `GLUE_DATABASE_NAME=manymetrics_lk1o4gzf EVENTS_S3_URI="s3://manymetrics-data-lk1o4gzf/data/events" spark-submit process_events.py --event "$(cat kinesis-event.json)"`
