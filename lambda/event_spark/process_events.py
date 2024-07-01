@@ -1,6 +1,6 @@
 import argparse
 import base64
-from datetime import datetime, timezone
+from datetime import datetime
 import json
 import os
 
@@ -115,7 +115,7 @@ def decode_base64(encoded_str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--event", help="events from lambda")
+    parser.add_argument("--event", help="Kinesis events")
     args = parser.parse_args()
 
     json_obj = json.loads(args.event)

@@ -1,4 +1,3 @@
-import boto3
 import sys
 import os
 import subprocess
@@ -14,47 +13,15 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-def spark_submit(event: dict)-> None:
-    """
-    Submits a local Spark script using spark-submit.
-    """
-     # Set the environment variables for the Spark application
-    # pyspark_submit_args = event.get('PYSPARK_SUBMIT_ARGS', '')
-    # # Source input and output if available in event
-    # input_path = event.get('INPUT_PATH','')
-    # output_path = event.get('OUTPUT_PATH', '')
-
-    # for key,value in event.items():
-        # os.environ[key] = value
-
-    # Run the spark-submit command on the local copy of teh script
-    try:
-        code_dir = os.path.dirname(os.path.realpath(__file__))
-        logger.info(f'Spark-Submitting the Spark script')
-        subprocess.run(["spark-submit", f"{code_dir}/process_events.py", "--event", json.dumps(event)], check=True, env=os.environ)
-    except Exception as e :
-        logger.error(f'Error Spark-Submit with exception: {e}')
-        raise e
-    else:
-        logger.info(f'Script successfully submitted')
+def spark_submit(event: dict) -> None:
+    code_dir = os.path.dirname(os.path.realpath(__file__))
+    logger.info("Submitting the Spark script")
+    subprocess.run(
+        ["spark-submit", f"{code_dir}/process_events.py", "--event", json.dumps(event)],
+        check=True,
+        env=os.environ,
+    )
 
 
 def lambda_handler(event, context):
-
-    """
-    Lambda_handler is called when the AWS Lambda
-    is triggered. The function is downloading file
-    from Amazon S3 location and spark submitting
-    the script in AWS Lambda
-    """
-
-    logger.info("******************Start AWS Lambda Handler************")
-    # s3_bucket_script = os.environ['SCRIPT_BUCKET']
-    # input_script = os.environ['SPARK_SCRIPT']
-    os.environ['INPUT_PATH'] = event.get('INPUT_PATH','')
-    os.environ['OUTPUT_PATH'] = event.get('OUTPUT_PATH', '')
-
-    # s3_script_download(s3_bucket_script, input_script)
-
-    # Set the environment variables for the Spark application
     spark_submit(event)

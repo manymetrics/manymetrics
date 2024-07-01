@@ -100,8 +100,8 @@ resource "aws_iam_role_policy" "api" {
 
 data "archive_file" "api" {
   type        = "zip"
-  source_file = "${path.module}/lambda/api_lambda/lambda_handler.py"
-  output_path = "${path.module}/lambda_function_payload.zip"
+  source_file = "${path.module}/../lambda/api_lambda/lambda_handler.py"
+  output_path = "${path.module}/../lambda_function_payload.zip"
 }
 
 resource "aws_lambda_function" "api" {

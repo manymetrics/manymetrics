@@ -1,4 +1,3 @@
-# Use AWS Lambda Python 3.8 image as base
 FROM public.ecr.aws/lambda/python:3.8
 
 # Setting the compatible versions of libraries
@@ -6,14 +5,12 @@ ARG HADOOP_VERSION=3.2.4
 ARG AWS_SDK_VERSION=1.11.901
 ARG PYSPARK_VERSION=3.3.0
 
-#FRAMEWORK will passed during the Docker build. For Apache Iceberg in somecase downgrading PYSPARK_VERSION to 3.2.0 will be good
 ARG FRAMEWORK=ICEBERG
 ARG DELTA_FRAMEWORK_VERSION=2.2.0
 ARG HUDI_FRAMEWORK_VERSION=0.12.2
 ARG ICEBERG_FRAMEWORK_VERSION=3.3_2.12
 ARG ICEBERG_FRAMEWORK_SUB_VERSION=1.1.0
 ARG DEEQU_FRAMEWORK_VERSION=2.0.3-spark-3.3
-
 
 # Perform system updates and install dependencies
 RUN yum update -y && \
@@ -35,8 +32,6 @@ ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9-src.zip:/ho
 ENV PATH=$SPARK_HOME/python:$PATH
 
 COPY download_jars.sh /tmp
-COPY libs/glue_functions /home/glue_functions
-RUN chmod -R 755 /home/glue_functions
 
 RUN chmod +x /tmp/download_jars.sh && \
     /tmp/download_jars.sh $FRAMEWORK $SPARK_HOME $HADOOP_VERSION $AWS_SDK_VERSION $DELTA_FRAMEWORK_VERSION $HUDI_FRAMEWORK_VERSION $ICEBERG_FRAMEWORK_VERSION $ICEBERG_FRAMEWORK_SUB_VERSION $DEEQU_FRAMEWORK_VERSION
@@ -50,7 +45,6 @@ ENV AWS_ACCESS_KEY_ID=""
 ENV AWS_SECRET_ACCESS_KEY=""
 ENV AWS_REGION=""
 ENV AWS_SESSION_TOKEN=""
-ENV CUSTOM_SQL=""
 
 # spark-class file is setting the memory to 1 GB
 COPY bin/spark-class $SPARK_HOME/bin/spark-class
