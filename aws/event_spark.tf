@@ -118,8 +118,9 @@ resource "aws_lambda_function" "event_spark" {
 
   environment {
     variables = {
-      GLUE_DATABASE_NAME = aws_glue_catalog_database.database.name
-      EVENTS_S3_URI      = "s3://${aws_s3_bucket.data.id}/data/events"
+      GLUE_DATABASE_NAME   = aws_glue_catalog_database.database.name
+      EVENTS_S3_URI        = "s3://${aws_s3_bucket.data.id}/data/events"
+      DEPLOYMENT_TIMESTAMP = timestamp()
     }
   }
 

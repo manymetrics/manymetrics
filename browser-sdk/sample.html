@@ -32,10 +32,14 @@
     <button
       onclick="mm.track('Custom Event with Custom Property', {'custom_property': Math.floor(Math.random() * 100)})">Track
       Custom Event with a Custom Property</button>
-    <button onclick="mm.track('Custom Event with Another Custom Property', {'custom_property2': 'cat'})">Track
-      Custom Event with Another Custom Property</button>
   </div>
-
+  <br>
+  <div>
+    <input type="text" id="input_property" name="input_property">
+    <button
+      onclick="mm.track('Custom Event with Input Property', {'custom_property': document.getElementById('input_property').value})">Track
+      Custom Event with a Custom Property from Input</button>
+  </div>
 </body>
 
 </html>

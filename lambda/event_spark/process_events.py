@@ -80,8 +80,8 @@ def _setup_spark(aws_access_key_id, aws_secret_access_key, warehouse_location):
         SparkSession.builder.appName("Spark-on-AWS-Lambda")
         .master("local[*]")
         .config("spark.driver.bindAddress", "127.0.0.1")
-        .config("spark.driver.memory", "5g")
-        .config("spark.executor.memory", "5g")
+        .config("spark.driver.memory", "1g")
+        .config("spark.executor.memory", "1g")
         .config("spark.hadoop.fs.s3a.access.key", aws_access_key_id)
         .config("spark.hadoop.fs.s3a.secret.key", aws_secret_access_key)
         .config(

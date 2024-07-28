@@ -4,6 +4,8 @@ import subprocess
 import logging
 import json
 
+DEPLOYMENT_TIMESTAMP = os.environ.get("DEPLOYMENT_TIMESTAMP", "unknown")
+
 # Set up logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -15,7 +17,9 @@ logger.addHandler(handler)
 
 def spark_submit(event: dict) -> None:
     code_dir = os.path.dirname(os.path.realpath(__file__))
-    logger.info("Submitting the Spark script")
+    logger.info(
+        f"Submitting the Spark script (deployment timestamp: {DEPLOYMENT_TIMESTAMP})"
+    )
     subprocess.run(
         ["spark-submit", f"{code_dir}/process_events.py", "--event", json.dumps(event)],
         check=True,
