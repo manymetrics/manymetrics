@@ -1,3 +1,5 @@
+.DS_Store
+
 # Local .terraform directories
 **/.terraform/*
 
@@ -35,5 +37,4 @@ terraform.rc
 
 .terraform.lock.hcl
 
-sample/
 env

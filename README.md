@@ -10,3 +10,15 @@ ManyMetrics is an open-source event tracking infrastructure:
 ## Components
 
 ![Components](docs/components.png)
+
+## Deployment
+
+ManyMetrics uses terraform for setting up resources in an AWS account. The following comment will
+- Create ECR repositories
+- Build and upload docker images
+- Create AWS resources
+
+```
+cd sample
+terraform apply
+```
