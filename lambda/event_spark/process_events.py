@@ -49,7 +49,7 @@ def spark_script(records):
     table = spark.table(table_identifier)
     print(f"Table schema: {table.schema}")
 
-    print(f"Records: {records}")
+    print(f"Records lenght: {len(records)}")
 
     events = []
     event_columns = set()
@@ -115,10 +115,11 @@ def decode_base64(encoded_str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--event", help="Kinesis events")
+    parser.add_argument("--event-file", help="Kinesis events")
     args = parser.parse_args()
 
-    json_obj = json.loads(args.event)
+    with open(args.event_file) as f:
+        json_obj = json.load(f)
     records = []
     for record in json_obj["Records"]:
         records.append(

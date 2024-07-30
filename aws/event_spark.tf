@@ -131,4 +131,5 @@ resource "aws_lambda_event_source_mapping" "event_spark" {
   event_source_arn  = aws_kinesis_stream.stream.arn
   function_name     = aws_lambda_function.event_spark.arn
   starting_position = "TRIM_HORIZON"
+  batch_size        = 9999
 }
