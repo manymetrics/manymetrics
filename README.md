@@ -23,7 +23,7 @@ cd sample
 terraform apply
 ```
 
-### Approximate monthly cost of running
+## Approximate monthly cost of running
 
 The calculations below do not include S3 storage and a few others costs like network costs but they should be relatively small.
 
@@ -34,5 +34,5 @@ The calculations below do not include S3 storage and a few others costs like net
 | Kinesis | $0.015 per hour <sup>[2]</sup> | $10.8 | $10.8 | $10.8 |
 | Total | | $11.9 | $21.8 | $120.8 |
 
-1. It assumes that 10,000 messages are processed in roughly 1 min by Spark in Lambda.
-2. One shard of provisioned Kinesis. More shards might be required for spiky workloads.
+1. Assumes that 10,000 messages are processed in roughly 1 min by Spark in Lambda.
+2. One shard of provisioned Kinesis, more shards might be required for spiky workloads.
