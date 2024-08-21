@@ -14,10 +14,6 @@ output "api_role_name" {
   value = aws_iam_role.api.name
 }
 
-output "ecr_event_lambda_name" {
-  value = aws_ecr_repository.ecr.name
-}
-
 output "data_bucket_name" {
   value = aws_s3_bucket.data.bucket
 }
