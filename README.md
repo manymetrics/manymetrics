@@ -36,3 +36,12 @@ The calculations below do not include S3 storage and a few others costs like net
 
 1. Assumes that 10,000 messages are processed in roughly 1 min by Spark in Lambda.
 2. One shard of provisioned Kinesis, more shards might be required for spiky workloads.
+
+## Development
+
+Use [pre-commit](https://pre-commit.com/).
+
+```
+pip install pre-commit
+pre-commit
+```

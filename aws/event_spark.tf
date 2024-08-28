@@ -78,7 +78,7 @@ resource "aws_iam_role_policy_attachment" "event_spark" {
 
 resource "null_resource" "event_spark_docker_build" {
   triggers = {
-    docker_file = md5(file("${path.module}/../lambda/event_spark/Dockerfile"))
+    docker_file    = md5(file("${path.module}/../lambda/event_spark/Dockerfile"))
     lambda_handler = md5(file("${path.module}/../lambda/event_spark/lambda_handler.py"))
     process_events = md5(file("${path.module}/../lambda/event_spark/process_events.py"))
   }
@@ -96,7 +96,7 @@ data "aws_ecr_image" "event_spark" {
   repository_name = aws_ecr_repository.event_spark.name
   image_tag       = "latest"
 
-  depends_on = [ null_resource.event_spark_docker_build ]
+  depends_on = [null_resource.event_spark_docker_build]
 }
 
 # data "external" "event_spark_image_digest" {

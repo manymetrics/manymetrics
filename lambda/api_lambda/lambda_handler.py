@@ -62,7 +62,7 @@ def _handle_event(lambda_event: dict[str, Any]) -> Response:
 
     try:
         event = _extract_and_enrich_event(lambda_event)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         return Response(
             statusCode=400,
             headers=response_headers,

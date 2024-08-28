@@ -13,6 +13,10 @@ class ManyMetrics {
         //     this.track('identify', traits);
     }
 
+    resetIdentity() {
+        // TODO
+    }
+
     track(eventType, properties = {}) {
         const reservedKeys = ['event_type', 'properties', 'user_id', 'session_id', 'path', 'client_event_time'];
         for (const key in properties) {
