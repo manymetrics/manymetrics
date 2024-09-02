@@ -11,7 +11,6 @@ repos:
     hooks:
       - id: end-of-file-fixer
       - id: check-json
-        exclude: ^haven/offer_templates/lakeview/
       - id: trailing-whitespace
 
   - repo: https://github.com/antonbabenko/pre-commit-terraform
