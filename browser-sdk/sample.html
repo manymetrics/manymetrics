@@ -7,10 +7,7 @@
   <script>
     // Initialize
       const mm = new ManyMetrics('30qukmk7qb.execute-api.eu-west-1.amazonaws.com', 'YOUR_API_KEY');
-    mm.init();
-
-    // Identify the user
-    mm.identify('user-123', { name: 'John Doe', email: 'johndoe@example.com' });
+      mm.init();
   </script>
 </head>
 
@@ -25,7 +22,8 @@
     </form>
   </div>
 
-  <br>
+  <hr />
+  <br />
 
   <div>
     <button onclick="mm.track('Custom Event')">Track Custom Event</button>
@@ -33,12 +31,22 @@
       onclick="mm.track('Custom Event with Custom Property', {'custom_property': Math.floor(Math.random() * 100)})">Track
       Custom Event with a Custom Property</button>
   </div>
-  <br>
+  <hr />
+  <br />
+
   <div>
     <input type="text" id="input_property" name="input_property">
     <button
       onclick="mm.track('Custom Event with Input Property', {'custom_property': document.getElementById('input_property').value})">Track
       Custom Event with a Custom Property from Input</button>
+  </div>
+  <hr />
+  <br />
+
+  <div>
+    <label for="identity">User ID:</label>
+    <input type="text" id="identity" name="identity">
+    <button onclick="mm.identify(document.getElementById('identity').value)">Identify</button>
   </div>
 </body>
 

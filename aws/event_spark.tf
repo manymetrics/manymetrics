@@ -12,7 +12,8 @@ resource "aws_iam_policy" "event_spark" {
           "s3:GetObject",
           "s3:ListBucket",
           "s3:ListBucketMultipartUploads",
-          "s3:PutObject"
+          "s3:PutObject",
+          "s3:DeleteObject"
         ],
         "Resource" : [
           aws_s3_bucket.data.arn,
@@ -119,7 +120,7 @@ resource "aws_lambda_function" "event_spark" {
   environment {
     variables = {
       GLUE_DATABASE_NAME   = aws_glue_catalog_database.database.name
-      EVENTS_S3_URI        = "s3://${aws_s3_bucket.data.id}/data/events"
+      WAREHOUSE_LOCATION   = "s3://${aws_s3_bucket.data.id}/data"
       DEPLOYMENT_TIMESTAMP = timestamp()
     }
   }

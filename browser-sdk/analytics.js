@@ -7,14 +7,26 @@ class ManyMetrics {
         this.identified = false;
     }
 
-    identify(userId, traits = {}) {
-        //     this.userId = userId;
-        //     this.identified = true;
-        //     this.track('identify', traits);
-    }
+    init() {
+        const userId = this.getCookie('userId');
+        if (userId) {
+            this.userId = userId;
+            this.identified = true;
+        } else {
+            this.userId = this.generateId();
+            this.setCookie('userId', this.userId);
+        }
 
-    resetIdentity() {
-        // TODO
+        const sessionId = this.getCookie('sessionId');
+        if (sessionId) {
+            this.sessionId = sessionId;
+        } else {
+            this.sessionId = this.generateId();
+            this.setCookie('sessionId', this.sessionId);
+        }
+
+        this.trackPageViews();
+        this.trackFormInteractions();
     }
 
     track(eventType, properties = {}) {
@@ -34,22 +46,11 @@ class ManyMetrics {
         const event = {
             event_type: eventType,
             user_id: this.userId,
-            session_id: this.sessionId,
-            path: window.location.pathname,
-            client_event_time: new Date().toISOString(),
-            host: window.location.host,
+            ...this.commonPayloadProperties(),
             ...strProperties
         };
         this.sendEvent(event);
     }
-
-    page(properties = {}) {
-        this.track('Pageview', properties);
-    }
-
-    // alias(newId, originalId) {
-    //     this.track('alias', { newId, originalId });
-    // }
 
     sendEvent(event) {
         console.log('Sending event:', event);
@@ -74,27 +75,6 @@ class ManyMetrics {
             });
     }
 
-    init() {
-        const userId = this.getCookie('userId');
-        if (userId) {
-            this.userId = userId;
-        } else {
-            this.userId = this.generateId();
-            this.setCookie('userId', this.userId);
-        }
-
-        const sessionId = this.getCookie('sessionId');
-        if (sessionId) {
-            this.sessionId = sessionId;
-        } else {
-            this.sessionId = this.generateId();
-            this.setCookie('sessionId', this.sessionId);
-        }
-
-        this.trackPageViews();
-        this.trackFormInteractions();
-    }
-
     getCookie(name) {
         const cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
@@ -115,15 +95,18 @@ class ManyMetrics {
     }
 
     trackPageViews() {
-        // track current page view
-        this.page({ referrer: document.referrer });
-
         const self = this;
+        function trackPage() {
+            self.track('Pageview', { referrer: document.referrer });
+        }
+
+        trackPage();
+
         window.addEventListener('popstate', function () {
-            self.page({ referrer: document.referrer });
+            trackPage();
         });
         window.addEventListener('hashchange', function () {
-            self.page({ referrer: document.referrer });
+            trackPage();
         });
     }
 
@@ -145,15 +128,52 @@ class ManyMetrics {
         });
     }
 
-    getFormData(form) {
-        const formData = {};
-        const elements = form.elements;
-        for (let i = 0; i < elements.length; i++) {
-            const element = elements[i];
-            if (element.name) {
-                formData[element.name] = element.value;
-            }
+    identify(newUserId, traits = {}) {
+        if (this.identified) {
+            throw new Error('User already identified');
         }
-        return formData;
+
+        const prevUserId = this.userId;
+        this.userId = newUserId;
+        this.identified = true;
+        this.setCookie('userId', this.userId);
+
+        const payload = {
+            prev_user_id: prevUserId,
+            new_user_id: this.userId,
+            ...this.commonPayloadProperties(),
+        };
+
+        fetch(`https://${this.instance}/identify`, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Identified successfully!');
+                } else {
+                    console.error('Error identifying:', response.statusText);
+                }
+            })
+            .catch(error => {
+                console.error('Error identifying:', error);
+            });
+    }
+
+    commonPayloadProperties() {
+        return {
+            session_id: this.sessionId,
+            client_event_time: new Date().toISOString(),
+            path: window.location.pathname,
+            host: window.location.host,
+        };
+    }
+
+    resetIdentity() {
+    // TODO
     }
 }
