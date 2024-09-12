@@ -8,11 +8,11 @@ provisioned using terraform, which sets up the following resources:
 - AWS Athena for SQL-based data access
 - A JavaScript client library
 
-ManyMetrics provides a cost-effective analytics solution that keeps data in your cloud account, allowing you to pay only for what you use.
+ManyMetrics provides a cost-effective analytics solution that keeps data in your cloud account, allowing you to pay only for what you use. The code is licensed under the MIT license.
 
 ## Components
 
-![Components](docs/components.png)
+![Components](docs/imgs/components.png)
 
 ## Deploy and track events
 
@@ -40,7 +40,9 @@ open http://0.0.0.0:8000/
 ```
 6. Open development tools in your browser and watch events being sent to the API when clicking buttons
 7. Open Athena in AWS Console (use the AWS region where you deployed ManyMetrics to) and select the database from the `glue_database_name` output
-8. Run the query to see the events `select * from events;`
+8. Run the query to see the events `select * from events;`. You should see the events
+
+![Athena query results](docs/imgs/query_results.png)
 
 ## Approximate monthly cost of running
 
