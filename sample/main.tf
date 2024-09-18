@@ -15,4 +15,6 @@ provider "aws" {
 
 module "manymetrics" {
   source = "../aws"
+
+  name = var.name
 }

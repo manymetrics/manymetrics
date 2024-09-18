@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "sdk" {
-  bucket = "manymetrics-sdk-${random_string.random.result}"
+  bucket = "manymetrics-sdk-${var.name}"
 }
 
 resource "aws_s3_bucket_public_access_block" "sdk" {
@@ -21,7 +21,7 @@ resource "aws_s3_bucket_acl" "sdk" {
   acl    = "public-read"
 }
 
-resource "aws_s3_bucket_object" "sdk" {
+resource "aws_s3_object" "sdk" {
   bucket       = aws_s3_bucket.sdk.id
   key          = "analytics.js"
   content      = file("../browser-sdk/analytics.js")

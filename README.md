@@ -19,11 +19,11 @@ ManyMetrics provides a cost-effective analytics solution that keeps data in your
 ManyMetrics uses terraform for setting up resources in an AWS account.
 
 1. Confgiure AWS access in your terminal
-2. Run the following command
+2. Run the following command (replace the name)
 
     ```
     cd sample
-    terraform apply
+    terraform apply -var="name=sample"
     ```
 
     This command should

@@ -1,5 +1,5 @@
 resource "aws_apigatewayv2_api" "api" {
-  name          = "manymetrics-api-${random_string.random.result}"
+  name          = "manymetrics-api-${var.name}"
   protocol_type = "HTTP"
 }
 
@@ -58,7 +58,7 @@ resource "aws_lambda_permission" "api_gw" {
 }
 
 resource "aws_iam_role" "api" {
-  name = "manymetrics-role-${random_string.random.result}"
+  name = "manymetrics-role-${var.name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -80,7 +80,7 @@ resource "aws_iam_role_policy_attachment" "api_gw_logs" {
 }
 
 resource "aws_iam_role_policy" "api" {
-  name = "manymetrics-policy-${random_string.random.result}"
+  name = "manymetrics-policy-${var.name}"
   role = aws_iam_role.api.id
 
   policy = jsonencode({
@@ -106,7 +106,7 @@ data "archive_file" "api" {
 
 resource "aws_lambda_function" "api" {
   filename      = data.archive_file.api.output_path
-  function_name = "manymetrics-api-${random_string.random.result}"
+  function_name = "manymetrics-api-${var.name}"
   role          = aws_iam_role.api.arn
   handler       = "lambda_handler.lambda_handler"
 

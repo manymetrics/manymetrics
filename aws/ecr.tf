@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "event_spark" {
-  name = "manymetrics-spark-${random_string.random.result}"
+  name = "manymetrics-spark-${var.name}"
 
   force_delete = true
 }

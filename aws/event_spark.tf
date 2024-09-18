@@ -1,5 +1,5 @@
 resource "aws_iam_policy" "event_spark" {
-  name = "manymetrics-event_spark-${random_string.random.result}"
+  name = "manymetrics-event_spark-${var.name}"
 
   policy = jsonencode({
     "Version" : "2012-10-17",
@@ -55,7 +55,7 @@ resource "aws_iam_policy" "event_spark" {
 }
 
 resource "aws_iam_role" "event_spark" {
-  name = "manymetrics-event_spark-${random_string.random.result}"
+  name = "manymetrics-event_spark-${var.name}"
 
   assume_role_policy = jsonencode({
     "Version" : "2012-10-17",
@@ -108,7 +108,7 @@ data "aws_ecr_image" "event_spark" {
 
 # TODO: we need to use something else than latest for the image tag
 resource "aws_lambda_function" "event_spark" {
-  function_name = "manymetrics-event_spark-${random_string.random.result}"
+  function_name = "manymetrics-event_spark-${var.name}"
   role          = aws_iam_role.event_spark.arn
 
   package_type = "Image"
