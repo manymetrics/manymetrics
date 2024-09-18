@@ -55,7 +55,7 @@ class ManyMetrics {
     sendEvent(event) {
         console.log('Sending event:', event);
 
-        fetch(`https://${this.instance}/track`, {
+        fetch(`${this.instance}/track`, {
             method: 'POST',
             mode: 'cors',
             headers: {
@@ -144,7 +144,7 @@ class ManyMetrics {
             ...this.commonPayloadProperties(),
         };
 
-        fetch(`https://${this.instance}/identify`, {
+        fetch(`${this.instance}/identify`, {
             method: 'POST',
             mode: 'cors',
             headers: {

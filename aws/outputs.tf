@@ -15,7 +15,7 @@ output "api_instance_url" {
 }
 
 output "browser_sdk_url" {
-  value = "https://${aws_s3_bucket.sdk.bucket}.s3.amazonaws.com${aws_s3_object.sdk.key}"
+  value = "https://${aws_s3_bucket.sdk.bucket}.s3.amazonaws.com/${aws_s3_object.sdk.key}"
 }
 
 output "glue_database_name" {
