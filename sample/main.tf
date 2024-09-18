@@ -16,5 +16,6 @@ provider "aws" {
 module "manymetrics" {
   source = "../aws"
 
-  name = var.name
+  name           = var.name
+  kinesis_shards = 1
 }
