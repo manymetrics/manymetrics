@@ -103,7 +103,8 @@ def _track(lambda_event: dict[str, Any]):
         {
             "type": "event",
             "data": event,
-        }
+        },
+        partition_key=event["user_id"],
     )
 
 
@@ -117,7 +118,8 @@ def _identify(lambda_event: dict[str, Any]):
         {
             "type": "identify",
             "data": event,
-        }
+        },
+        partition_key=event["prev_user_id"],
     )
 
 
@@ -158,12 +160,12 @@ class _KinesisEvent(TypedDict):
     data: dict[str, Any]
 
 
-def _write_to_kinesis(data: _KinesisEvent):
+def _write_to_kinesis(data: _KinesisEvent, partition_key: str):
     try:
         response = kinesis_client.put_record(
             StreamName=KINESIS_STREAM_NAME,
             Data=json.dumps(data),
-            PartitionKey="partition_key",
+            PartitionKey=partition_key,
         )
         print("Response from Kinesis: " + json.dumps(response))
     except Exception as e:
