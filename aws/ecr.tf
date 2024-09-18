@@ -1,5 +1,7 @@
 resource "aws_ecr_repository" "event_spark" {
   name = "manymetrics-spark-${random_string.random.result}"
+
+  force_delete = true
 }
 
 resource "aws_ecr_lifecycle_policy" "event_spark" {
