@@ -4,14 +4,12 @@ class ManyMetrics {
         this.apiKey = apiKey;
         this.userId = null;
         this.sessionId = null;
-        this.identified = false;
     }
 
     init() {
         const userId = this.getCookie('userId');
         if (userId) {
             this.userId = userId;
-            this.identified = true;
         } else {
             this.userId = this.generateId();
             this.setCookie('userId', this.userId);
@@ -129,13 +127,8 @@ class ManyMetrics {
     }
 
     identify(newUserId, traits = {}) {
-        if (this.identified) {
-            throw new Error('User already identified');
-        }
-
         const prevUserId = this.userId;
         this.userId = newUserId;
-        this.identified = true;
         this.setCookie('userId', this.userId);
 
         const payload = {
