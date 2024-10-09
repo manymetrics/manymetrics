@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "sdk" {
-  bucket = "manymetrics-sdk-${var.name}"
+  bucket = "manymetrics-sdk-${random_string.unique_key.result}-${var.name}"
 }
 
 resource "aws_s3_bucket_public_access_block" "sdk" {
