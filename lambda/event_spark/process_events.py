@@ -24,7 +24,7 @@ EVENTS_BASE_DDL = f"""CREATE TABLE IF NOT EXISTS {EVENTS_TABLE_IDENTIFIER} (
     path string
 ) USING iceberg
 PARTITIONED BY (days(event_time))
-TBLPROPERTIES ('table_type'='ICEBERG', 'classification' = 'parquet')
+TBLPROPERTIES ('format-version'='2', 'table_type'='ICEBERG', 'classification' = 'parquet')
 ;"""
 IDENTIFIES_TABLE_NAME = "identifies"
 IDENTIFIES_TABLE_IDENTIFIER = f"{CATALOG_NAME}.{DATABASE_NAME}.{IDENTIFIES_TABLE_NAME}"
@@ -39,7 +39,7 @@ IDENTIFIES_BASE_DDL = f"""CREATE TABLE IF NOT EXISTS {IDENTIFIES_TABLE_IDENTIFIE
     host string,
     path string
 ) USING iceberg
-TBLPROPERTIES ('table_type'='ICEBERG', 'classification' = 'parquet')
+TBLPROPERTIES ('format-version'='2', 'table_type'='ICEBERG', 'classification' = 'parquet')
 ;"""
 
 
