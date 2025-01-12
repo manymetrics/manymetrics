@@ -1,12 +1,11 @@
 # ManyMetrics
 
-ManyMetrics is an open-source event tracking infrastructure based on AWS. Like Heap or Mixpanel, but you own the infrastructure and keep data in your lake. The infrastructure is
-provisioned using terraform, which sets up the following resources:
+ManyMetrics is an open-source event tracking infrastructure based on AWS. Think Heap or Mixpanel but data arehouse first and it is in your AWS account and you own the data. The infrastructure is provisioned using terraform, which sets up the following resources:
 
 - API powered by API Gateway and Lambda
 - S3 storage in the [Apache Iceberg](https://iceberg.apache.org/) format
-- AWS Athena for SQL-based data access
-- A JavaScript client library
+- AWS Athena for querying data with SQL
+- A JavaScript client library that can be used to send common product analytics (feel free to just use API!)
 
 ManyMetrics provides a cost-effective analytics solution that keeps data in your cloud account, allowing you to pay only for what you use. The code is licensed under the MIT license.
 
@@ -55,8 +54,8 @@ The calculations below do not include S3 storage and a few others costs like net
 | Kinesis | $0.015 per hour <sup>[2]</sup> | $10.8 | $10.8 | $10.8 |
 | Total | | $11.9 | $21.8 | $120.8 |
 
-1. Assumes that 10,000 messages are processed in roughly 1 min by Spark in Lambda.
-2. One shard of provisioned Kinesis, more shards might be required for spiky workloads.
+1. Assumes that 10,000 events are processed in roughly 1 min by Spark in Lambda.
+2. One shard of provisioned Kinesis, more shards might be required if the volume is higher than 10k events/min and data should be avialable immediately
 
 ## Development
 
