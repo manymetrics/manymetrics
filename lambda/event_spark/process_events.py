@@ -21,7 +21,8 @@ EVENTS_BASE_DDL = f"""CREATE TABLE IF NOT EXISTS {EVENTS_TABLE_IDENTIFIER} (
     server_event_time timestamp NOT NULL,
     ip_address string,
     host string,
-    path string
+    path string,
+    user_agent string
 ) USING iceberg
 PARTITIONED BY (days(event_time))
 TBLPROPERTIES ('format-version'='2', 'table_type'='ICEBERG', 'classification' = 'parquet')
@@ -37,7 +38,8 @@ IDENTIFIES_BASE_DDL = f"""CREATE TABLE IF NOT EXISTS {IDENTIFIES_TABLE_IDENTIFIE
     server_event_time timestamp NOT NULL,
     ip_address string,
     host string,
-    path string
+    path string,
+    user_agent string
 ) USING iceberg
 TBLPROPERTIES ('format-version'='2', 'table_type'='ICEBERG', 'classification' = 'parquet')
 ;"""
@@ -51,12 +53,8 @@ def spark_script(records):
 
     spark = _setup_spark(aws_access_key_id, aws_secret_access_key)
 
-    _create_table_if_not_exists(
-        spark, DATABASE_NAME, EVENTS_TABLE_NAME, EVENTS_BASE_DDL
-    )
-    _create_table_if_not_exists(
-        spark, DATABASE_NAME, IDENTIFIES_TABLE_NAME, IDENTIFIES_BASE_DDL
-    )
+    _create_table_if_not_exists(spark, DATABASE_NAME, EVENTS_TABLE_NAME, EVENTS_BASE_DDL)
+    _create_table_if_not_exists(spark, DATABASE_NAME, IDENTIFIES_TABLE_NAME, IDENTIFIES_BASE_DDL)
 
     print(f"Records lenght: {len(records)}")
 
@@ -81,9 +79,7 @@ def _setup_spark(aws_access_key_id, aws_secret_access_key):
             "spark.sql.extensions",
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
         )
-        .config(
-            "spark.sql.catalog.AwsDataCatalog", "org.apache.iceberg.spark.SparkCatalog"
-        )
+        .config("spark.sql.catalog.AwsDataCatalog", "org.apache.iceberg.spark.SparkCatalog")
         .config(
             "spark.sql.catalog.AwsDataCatalog.catalog-impl",
             "org.apache.iceberg.aws.glue.GlueCatalog",
@@ -125,9 +121,7 @@ def _handle_events(spark, events):
     for column in event_columns:
         if column not in table.schema.names:
             print(f"Adding a new column {column} to table schema")
-            spark.sql(
-                f"ALTER TABLE {EVENTS_TABLE_IDENTIFIER} ADD COLUMN {column} string"
-            )
+            spark.sql(f"ALTER TABLE {EVENTS_TABLE_IDENTIFIER} ADD COLUMN {column} string")
 
     df = spark.createDataFrame(data=events, schema=table.schema)
     df.printSchema()
@@ -161,8 +155,6 @@ if __name__ == "__main__":
         json_obj = json.load(f)
     records = []
     for record in json_obj["Records"]:
-        records.append(
-            json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8"))
-        )
+        records.append(json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8")))
 
     spark_script(records)

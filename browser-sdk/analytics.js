@@ -44,6 +44,7 @@ class ManyMetrics {
         const event = {
             event_type: eventType,
             user_id: this.userId,
+            user_agent: navigator.userAgent,
             ...this.commonPayloadProperties(),
             ...strProperties
         };
