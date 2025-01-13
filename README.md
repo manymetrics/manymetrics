@@ -1,13 +1,15 @@
 # ManyMetrics
 
-ManyMetrics is an open-source event tracking infrastructure based on AWS. Think Heap or Mixpanel but data arehouse first and it is in your AWS account and you own the data. The infrastructure is provisioned using terraform, which sets up the following resources:
+ManyMetrics is an open-source event tracking infrastructure based on AWS. Think Heap or Mixpanel but data arehouse first and it is in your AWS infra, you own the data and it is crazy cheap.
+
+The infrastructure is provisioned using terraform, which sets up the following resources:
 
 - API powered by API Gateway and Lambda
 - S3 storage in the [Apache Iceberg](https://iceberg.apache.org/) format
 - AWS Athena for querying data with SQL
-- A JavaScript client library that can be used to send common product analytics (feel free to just use API!)
+- A JavaScript client library that can be used to send common product analytics (feel free to use the API instead!)
 
-ManyMetrics provides a cost-effective analytics solution that keeps data in your cloud account, allowing you to pay only for what you use. The code is licensed under the MIT license.
+The code is licensed under the MIT license.
 
 ## Components
 

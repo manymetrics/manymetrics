@@ -1,12 +1,16 @@
 import os
 import json
-import traceback
+import logging
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from functools import wraps
 from typing import Any, Literal, TypedDict
 
 import boto3
+
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 KINESIS_STREAM_NAME = os.environ.get("KINESIS_STREAM_NAME")
@@ -18,7 +22,7 @@ def log_response(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         response = func(*args, **kwargs)
-        print("Response: " + str(response))
+        logger.info(f"Response: {response}")
         return response
 
     return wrapper
@@ -51,7 +55,7 @@ def lambda_handler(lambda_event, context) -> dict[str, Any]:
 
 
 def _handle_event(lambda_event: dict[str, Any]) -> Response:
-    print("Received lambda_event: " + json.dumps(lambda_event))
+    logger.info(f"Received lambda_event: {json.dumps(lambda_event)}")
 
     if _is_cors_request(lambda_event):
         return Response(statusCode=200, headers=_get_cors_headers(lambda_event))
@@ -65,12 +69,14 @@ def _handle_event(lambda_event: dict[str, Any]) -> Response:
         if lambda_event.get("httpMethod") != "POST":
             raise BadRequestError("Bad Request")
 
-        if lambda_event.get("path") == "/track":
-            _track(lambda_event)
-        elif lambda_event.get("path") == "/identify":
-            _identify(lambda_event)
-        else:
+        handlers = {"/track": _track, "/identify": _identify}
+
+        path = lambda_event.get("path")
+        if not path or path not in handlers:
             raise BadRequestError("Bad Request")
+
+        handlers[path](lambda_event)
+
     except BadRequestError as e:
         return Response(
             statusCode=400,
@@ -87,17 +93,12 @@ def _handle_event(lambda_event: dict[str, Any]) -> Response:
     return Response(
         statusCode=200,
         headers=response_headers,
-        body={
-            "message": "Ok",
-        },
+        body={"message": "Ok"},
     )
 
 
 def _track(lambda_event: dict[str, Any]):
-    try:
-        event = _extract_and_enrich_event(lambda_event)
-    except json.JSONDecodeError as e:
-        raise BadRequestError("Bad Request" + str(e))
+    event = _extract_and_enrich_event(lambda_event)
 
     _write_to_kinesis(
         {
@@ -109,10 +110,7 @@ def _track(lambda_event: dict[str, Any]):
 
 
 def _identify(lambda_event: dict[str, Any]):
-    try:
-        event = _extract_and_enrich_event(lambda_event)
-    except json.JSONDecodeError as e:
-        raise BadRequestError("Bad Request" + str(e))
+    event = _extract_and_enrich_event(lambda_event)
 
     _write_to_kinesis(
         {
@@ -135,21 +133,21 @@ def _get_cors_headers(lambda_event: dict[str, Any]):
         "Access-Control-Allow-Credentials": True,
     }
 
-    if "origin" in lambda_event["headers"]:
-        origin = lambda_event["headers"]["origin"]
-    else:
-        origin = "*"
-
+    origin = lambda_event["headers"].get("origin", "*")
     headers["Access-Control-Allow-Origin"] = origin
     return headers
 
 
 def _extract_and_enrich_event(lambda_event: dict[str, Any]) -> dict[str, Any]:
-    event = json.loads(lambda_event["body"])
+    try:
+        event = json.loads(lambda_event["body"])
+    except json.JSONDecodeError:
+        raise BadRequestError("Bad Request")
 
-    event["server_event_time"] = (
-        datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-    )
+    if not isinstance(event, dict):
+        raise BadRequestError("Bad Request")
+
+    event["server_event_time"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     event["ip_address"] = lambda_event["requestContext"]["identity"]["sourceIp"]
 
     return event
@@ -162,12 +160,11 @@ class _KinesisEvent(TypedDict):
 
 def _write_to_kinesis(data: _KinesisEvent, partition_key: str):
     try:
-        response = kinesis_client.put_record(
+        kinesis_client.put_record(
             StreamName=KINESIS_STREAM_NAME,
             Data=json.dumps(data),
             PartitionKey=partition_key,
         )
-        print("Response from Kinesis: " + json.dumps(response))
-    except Exception as e:
-        traceback.print_exception(e)
+    except Exception:
+        logger.exception("Kinesis error")
         raise InternalServerError("Kinesis error")
