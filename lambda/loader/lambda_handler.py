@@ -1,10 +1,42 @@
 from datetime import datetime
 from pyiceberg.catalog import load_catalog
+from pyiceberg.exceptions import NoSuchTableError
 from pyiceberg.types import (
     StringType,
+    TimestampType,
 )
 import pyarrow as pa
 import os
+
+DATABASE_NAME = os.environ["GLUE_DATABASE_NAME"]
+EVENTS_TABLE_NAME = "events"
+IDENTIFIES_TABLE_NAME = "identifies"
+EVENTS_SCHEMA = {
+    "event_time": TimestampType(),
+    "event_type": StringType(),
+    "user_id": StringType(),
+    "session_id": StringType(),
+    "client_event_time": TimestampType(),
+    "server_event_time": TimestampType(),
+    "ip_address": StringType(),
+    "host": StringType(),
+    "path": StringType(),
+    "referrer": StringType(),
+    "user_agent": StringType(),
+}
+
+IDENTIFIES_SCHEMA = {
+    "event_time": TimestampType(),
+    "prev_user_id": StringType(),
+    "new_user_id": StringType(),
+    "session_id": StringType(),
+    "client_event_time": TimestampType(),
+    "server_event_time": TimestampType(),
+    "ip_address": StringType(),
+    "host": StringType(),
+    "path": StringType(),
+    "user_agent": StringType(),
+}
 
 
 def lambda_handler(event: dict, context: dict) -> None:
@@ -18,24 +50,42 @@ def lambda_handler(event: dict, context: dict) -> None:
         type="glue",
     )
 
+    _create_table_if_not_exists(catalog, DATABASE_NAME, EVENTS_TABLE_NAME, EVENTS_SCHEMA)
+    _create_table_if_not_exists(catalog, DATABASE_NAME, IDENTIFIES_TABLE_NAME, IDENTIFIES_SCHEMA)
+
     # Get records from event
     records = event.get("Records", [])
     if not records:
         print("No records to process")
         return
 
-    events_table = catalog.load_table("manymetrics_site2.events")
+    events_table = catalog.load_table(f"{DATABASE_NAME}.{EVENTS_TABLE_NAME}")
     events = [r["data"] for r in records if r["type"] == "event"]
     if events:
         _handle_events(events_table, events)
 
-    identifies_table = catalog.load_table("manymetrics_site2.identifies")
+    identifies_table = catalog.load_table(f"{DATABASE_NAME}.{IDENTIFIES_TABLE_NAME}")
     identifies = [r["data"] for r in records if r["type"] == "identify"]
     if identifies:
         _handle_identifies(identifies_table, identifies)
 
 
-def _handle_events(table, events):
+def _create_table_if_not_exists(catalog, database_name: str, table_name: str, schema: dict) -> None:
+    try:
+        catalog.load_table(f"{database_name}.{table_name}")
+        print(f"Table {database_name}.{table_name} exists")
+    except NoSuchTableError:
+        print(f"Table {database_name}.{table_name} does not exist, creating")
+        catalog.create_table(
+            identifier=f"{database_name}.{table_name}",
+            schema=schema,
+            properties={
+                "format-version": "2",
+            },
+        )
+
+
+def _handle_events(table, events: list[dict]) -> None:
     current_columns = set(field.name for field in table.schema().fields)
 
     print("len(events)", len(events))
@@ -62,7 +112,7 @@ def _handle_events(table, events):
     table.append(df)
 
 
-def _handle_identifies(table, identifies):
+def _handle_identifies(table, identifies: list[dict]) -> None:
     print("len(identifies)", len(identifies))
     for identify in identifies:
         identify["server_event_time"] = _convert_timestamp(identify["server_event_time"])
@@ -73,30 +123,5 @@ def _handle_identifies(table, identifies):
     table.append(df)
 
 
-def _convert_timestamp(timestamp):
+def _convert_timestamp(timestamp: str) -> datetime:
     return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-
-
-if __name__ == "__main__":
-    # Test event
-    test_event = {
-        "Records": [
-            {
-                "type": "event",
-                "data": {
-                    "event_time": "2024-01-01T12:00:00Z",
-                    "event_type": "test_event_pyiceberg",
-                    "user_id": "123",
-                    "session_id": "456",
-                    "client_event_time": "2024-01-01T12:00:00Z",
-                    "server_event_time": "2024-01-01T12:00:00Z",
-                    "ip_address": "192.168.1.1",
-                    "host": "example.com",
-                    "path": "/",
-                    "referrer": "https://example.com",
-                    "user_agent": "Mozilla/5.0",
-                },
-            }
-        ]
-    }
-    lambda_handler(test_event, {})
