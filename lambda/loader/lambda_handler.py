@@ -1,4 +1,7 @@
+import base64
 from datetime import datetime
+import json
+import logging
 from pyiceberg.catalog import load_catalog
 from pyiceberg.exceptions import NoSuchTableError
 from pyiceberg.types import (
@@ -9,6 +12,7 @@ import pyarrow as pa
 import os
 
 DATABASE_NAME = os.environ["GLUE_DATABASE_NAME"]
+DEPLOYMENT_TIMESTAMP = os.environ.get("DEPLOYMENT_TIMESTAMP")
 EVENTS_TABLE_NAME = "events"
 IDENTIFIES_TABLE_NAME = "identifies"
 EVENTS_SCHEMA = {
@@ -38,13 +42,15 @@ IDENTIFIES_SCHEMA = {
     "user_agent": StringType(),
 }
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event: dict, context: dict) -> None:
     catalog = load_catalog(
         "glue",
         **{
-            "client.access-key-id": os.environ["AWS_ACCESS_KEY_ID"],
-            "client.secret-access-key": os.environ["AWS_SECRET_ACCESS_KEY"],
+            # "client.access-key-id": os.environ["AWS_ACCESS_KEY_ID"],
+            # "client.secret-access-key": os.environ["AWS_SECRET_ACCESS_KEY"],
             "client.region": "eu-west-1",
         },
         type="glue",
@@ -53,10 +59,11 @@ def lambda_handler(event: dict, context: dict) -> None:
     _create_table_if_not_exists(catalog, DATABASE_NAME, EVENTS_TABLE_NAME, EVENTS_SCHEMA)
     _create_table_if_not_exists(catalog, DATABASE_NAME, IDENTIFIES_TABLE_NAME, IDENTIFIES_SCHEMA)
 
-    # Get records from event
-    records = event.get("Records", [])
+    records = [_decode_record(record) for record in event.get("Records", [])]
+    logger.info(f"Processing {records} records")
+
     if not records:
-        print("No records to process")
+        logger.info("No records to process")
         return
 
     events_table = catalog.load_table(f"{DATABASE_NAME}.{EVENTS_TABLE_NAME}")
@@ -69,13 +76,21 @@ def lambda_handler(event: dict, context: dict) -> None:
     if identifies:
         _handle_identifies(identifies_table, identifies)
 
+    if len(events) + len(identifies) != len(records):
+        unknown_records_len = len(records) - (len(events) + len(identifies))
+        logger.warn(f"Unknown records: {unknown_records_len}")
+
+
+def _decode_record(record: dict) -> dict:
+    return json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8"))
+
 
 def _create_table_if_not_exists(catalog, database_name: str, table_name: str, schema: dict) -> None:
     try:
         catalog.load_table(f"{database_name}.{table_name}")
-        print(f"Table {database_name}.{table_name} exists")
+        logger.info(f"Table {database_name}.{table_name} exists")
     except NoSuchTableError:
-        print(f"Table {database_name}.{table_name} does not exist, creating")
+        logger.info(f"Table {database_name}.{table_name} does not exist, creating")
         catalog.create_table(
             identifier=f"{database_name}.{table_name}",
             schema=schema,
@@ -88,7 +103,7 @@ def _create_table_if_not_exists(catalog, database_name: str, table_name: str, sc
 def _handle_events(table, events: list[dict]) -> None:
     current_columns = set(field.name for field in table.schema().fields)
 
-    print("len(events)", len(events))
+    logger.info(f"Handling {len(events)} events")
     event_columns = set()
     for event in events:
         event_columns.update(event.keys())
@@ -103,7 +118,7 @@ def _handle_events(table, events: list[dict]) -> None:
     if new_columns:
         updates = table.update_schema()
         for column in new_columns:
-            print(f"Adding new column: {column}")
+            logger.info(f"Adding new column: {column}")
             updates.add_column(column, StringType())
         updates.commit()
 
@@ -113,7 +128,7 @@ def _handle_events(table, events: list[dict]) -> None:
 
 
 def _handle_identifies(table, identifies: list[dict]) -> None:
-    print("len(identifies)", len(identifies))
+    logger.info(f"Handling {len(identifies)} identifies")
     for identify in identifies:
         identify["server_event_time"] = _convert_timestamp(identify["server_event_time"])
         identify["client_event_time"] = _convert_timestamp(identify["client_event_time"])
@@ -125,3 +140,28 @@ def _handle_identifies(table, identifies: list[dict]) -> None:
 
 def _convert_timestamp(timestamp: str) -> datetime:
     return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+
+
+if __name__ == "__main__":
+    # Test event
+    test_event = {
+        "Records": [
+            {
+                "type": "event",
+                "data": {
+                    "event_time": "2024-01-01T12:00:00Z",
+                    "event_type": "test_event_pyiceberg",
+                    "user_id": "123",
+                    "session_id": "456",
+                    "client_event_time": "2024-01-01T12:00:00Z",
+                    "server_event_time": "2024-01-01T12:00:00Z",
+                    "ip_address": "192.168.1.1",
+                    "host": "example.com",
+                    "path": "/",
+                    "referrer": "https://example.com",
+                    "user_agent": "Mozilla/5.0",
+                },
+            }
+        ]
+    }
+    lambda_handler(test_event, {})

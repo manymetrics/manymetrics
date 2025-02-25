@@ -1,11 +1,11 @@
-resource "aws_ecr_repository" "event_spark" {
-  name = "manymetrics-spark-${var.name}"
+resource "aws_ecr_repository" "loader" {
+  name = "manymetrics-loader-${var.name}"
 
   force_delete = true
 }
 
-resource "aws_ecr_lifecycle_policy" "event_spark" {
-  repository = aws_ecr_repository.event_spark.name
+resource "aws_ecr_lifecycle_policy" "loader" {
+  repository = aws_ecr_repository.loader.name
 
   policy = jsonencode({
     "rules" : [
