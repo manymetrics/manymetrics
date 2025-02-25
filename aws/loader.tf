@@ -1,5 +1,5 @@
-resource "aws_iam_policy" "event_spark" {
-  name = "manymetrics-event_spark-${var.name}"
+resource "aws_iam_policy" "loader" {
+  name = "manymetrics-loader-${var.name}"
 
   policy = jsonencode({
     "Version" : "2012-10-17",
@@ -54,8 +54,8 @@ resource "aws_iam_policy" "event_spark" {
   })
 }
 
-resource "aws_iam_role" "event_spark" {
-  name = "manymetrics-event_spark-${var.name}"
+resource "aws_iam_role" "loader" {
+  name = "manymetrics-loader-${var.name}"
 
   assume_role_policy = jsonencode({
     "Version" : "2012-10-17",
@@ -72,32 +72,32 @@ resource "aws_iam_role" "event_spark" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "event_spark" {
-  role       = aws_iam_role.event_spark.name
-  policy_arn = aws_iam_policy.event_spark.arn
+resource "aws_iam_role_policy_attachment" "loader" {
+  role       = aws_iam_role.loader.name
+  policy_arn = aws_iam_policy.loader.arn
 }
 
-resource "null_resource" "event_spark_docker_build" {
+resource "null_resource" "loader_docker_build" {
   triggers = {
-    docker_file    = md5(file("${path.module}/../lambda/event_spark/Dockerfile"))
-    lambda_handler = md5(file("${path.module}/../lambda/event_spark/lambda_handler.py"))
-    process_events = md5(file("${path.module}/../lambda/event_spark/process_events.py"))
+    docker_file    = md5(file("${path.module}/../lambda/loader/Dockerfile"))
+    lambda_handler = md5(file("${path.module}/../lambda/loader/lambda_handler.py"))
+    process_events = md5(file("${path.module}/../lambda/loader/uv.lock"))
   }
 
   provisioner "local-exec" {
     command = <<EOF
-      aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${aws_ecr_repository.event_spark.repository_url}
-      docker build -t ${aws_ecr_repository.event_spark.repository_url}:latest ${path.module}/../lambda/event_spark
-      docker push ${aws_ecr_repository.event_spark.repository_url}:latest
+      aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${aws_ecr_repository.loader.repository_url}
+      docker build -t ${aws_ecr_repository.loader.repository_url}:latest ${path.module}/../lambda/loader
+      docker push ${aws_ecr_repository.loader.repository_url}:latest
     EOF
   }
 }
 
-data "aws_ecr_image" "event_spark" {
-  repository_name = aws_ecr_repository.event_spark.name
+data "aws_ecr_image" "loader" {
+  repository_name = aws_ecr_repository.loader.name
   image_tag       = "latest"
 
-  depends_on = [null_resource.event_spark_docker_build]
+  depends_on = [null_resource.loader_docker_build]
 }
 
 # data "external" "event_spark_image_digest" {
@@ -107,12 +107,12 @@ data "aws_ecr_image" "event_spark" {
 # }
 
 # TODO: we need to use something else than latest for the image tag
-resource "aws_lambda_function" "event_spark" {
-  function_name = "manymetrics-event_spark-${var.name}"
-  role          = aws_iam_role.event_spark.arn
+resource "aws_lambda_function" "loader" {
+  function_name = "manymetrics-loader-${var.name}"
+  role          = aws_iam_role.loader.arn
 
   package_type = "Image"
-  image_uri    = data.aws_ecr_image.event_spark.image_uri
+  image_uri    = data.aws_ecr_image.loader.image_uri
 
   timeout     = 120
   memory_size = 1024
@@ -125,12 +125,12 @@ resource "aws_lambda_function" "event_spark" {
     }
   }
 
-  depends_on = [null_resource.event_spark_docker_build]
+  depends_on = [null_resource.loader_docker_build]
 }
 
-resource "aws_lambda_event_source_mapping" "event_spark" {
+resource "aws_lambda_event_source_mapping" "loader" {
   event_source_arn  = aws_kinesis_stream.stream.arn
-  function_name     = aws_lambda_function.event_spark.arn
+  function_name     = aws_lambda_function.loader.arn
   starting_position = "TRIM_HORIZON"
   batch_size        = 9999
 }
