@@ -4,43 +4,53 @@ import json
 import logging
 from pyiceberg.catalog import load_catalog
 from pyiceberg.exceptions import NoSuchTableError
+from pyiceberg.partitioning import PartitionSpec, PartitionField
+from pyiceberg.transforms import DayTransform, IdentityTransform
+from pyiceberg.table.sorting import SortOrder, SortField
 from pyiceberg.types import (
     StringType,
     TimestampType,
+    NestedField,
 )
+from pyiceberg.schema import Schema
 import pyarrow as pa
 import os
 
 DATABASE_NAME = os.environ["GLUE_DATABASE_NAME"]
+WAREHOUSE_LOCATION = os.environ["WAREHOUSE_LOCATION"]
 DEPLOYMENT_TIMESTAMP = os.environ.get("DEPLOYMENT_TIMESTAMP")
 EVENTS_TABLE_NAME = "events"
 IDENTIFIES_TABLE_NAME = "identifies"
-EVENTS_SCHEMA = {
-    "event_time": TimestampType(),
-    "event_type": StringType(),
-    "user_id": StringType(),
-    "session_id": StringType(),
-    "client_event_time": TimestampType(),
-    "server_event_time": TimestampType(),
-    "ip_address": StringType(),
-    "host": StringType(),
-    "path": StringType(),
-    "referrer": StringType(),
-    "user_agent": StringType(),
-}
-
-IDENTIFIES_SCHEMA = {
-    "event_time": TimestampType(),
-    "prev_user_id": StringType(),
-    "new_user_id": StringType(),
-    "session_id": StringType(),
-    "client_event_time": TimestampType(),
-    "server_event_time": TimestampType(),
-    "ip_address": StringType(),
-    "host": StringType(),
-    "path": StringType(),
-    "user_agent": StringType(),
-}
+PARTITION_SPEC = PartitionSpec(
+    PartitionField(name="day", field_id=10001, transform=DayTransform(), source_id=1),
+)
+EVENTS_SCHEMA = Schema(
+    NestedField(field_id=1, name="event_time", field_type=TimestampType()),
+    NestedField(field_id=2, name="event_type", field_type=StringType()),
+    NestedField(field_id=3, name="user_id", field_type=StringType()),
+    NestedField(field_id=4, name="session_id", field_type=StringType()),
+    NestedField(field_id=5, name="client_event_time", field_type=TimestampType()),
+    NestedField(field_id=6, name="server_event_time", field_type=TimestampType()),
+    NestedField(field_id=7, name="ip_address", field_type=StringType()),
+    NestedField(field_id=8, name="host", field_type=StringType()),
+    NestedField(field_id=9, name="path", field_type=StringType()),
+    NestedField(field_id=10, name="referrer", field_type=StringType()),
+    NestedField(field_id=11, name="user_agent", field_type=StringType()),
+)
+IDENTIFIES_SCHEMA = Schema(
+    NestedField(field_id=1, name="event_time", field_type=TimestampType()),
+    NestedField(field_id=2, name="prev_user_id", field_type=StringType()),
+    NestedField(field_id=3, name="new_user_id", field_type=StringType()),
+    NestedField(field_id=4, name="session_id", field_type=StringType()),
+    NestedField(field_id=5, name="client_event_time", field_type=TimestampType()),
+    NestedField(field_id=6, name="server_event_time", field_type=TimestampType()),
+    NestedField(field_id=7, name="ip_address", field_type=StringType()),
+    NestedField(field_id=8, name="host", field_type=StringType()),
+    NestedField(field_id=9, name="path", field_type=StringType()),
+    NestedField(field_id=10, name="referrer", field_type=StringType()),
+    NestedField(field_id=11, name="user_agent", field_type=StringType()),
+)
+SORT_ORDER = SortOrder(SortField(source_id=1, transform=IdentityTransform()))
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -93,7 +103,10 @@ def _create_table_if_not_exists(catalog, database_name: str, table_name: str, sc
         logger.info(f"Table {database_name}.{table_name} does not exist, creating")
         catalog.create_table(
             identifier=f"{database_name}.{table_name}",
+            location=WAREHOUSE_LOCATION,
             schema=schema,
+            partition_spec=PARTITION_SPEC,
+            sort_order=SORT_ORDER,
             properties={
                 "format-version": "2",
             },
