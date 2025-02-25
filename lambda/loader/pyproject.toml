@@ -1,0 +1,9 @@
+[project]
+name = "loader"
+version = "0.1.0"
+description = "Lambda function to load events and identifies into Iceberg tables"
+requires-python = ">=3.12"
+dependencies = [
+    "pyiceberg[s3fs,pyarrow,glue]",
+    "pyarrow",
+]
