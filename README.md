@@ -56,7 +56,7 @@ The calculations below do not include S3 storage and a few others costs like net
 | Kinesis | $0.015 per hour <sup>[2]</sup> | $10.8 | $10.8 | $10.8 |
 | Total | | $11.9 | $21.8 | $120.8 |
 
-1. Assumes that 10,000 events are processed in roughly 1 min by Spark in Lambda.
+1. Assumes that 10,000 events are processed in roughly 1 min in Lambda.
 2. One shard of provisioned Kinesis, more shards might be required if the volume is higher than 10k events/min and data should be avialable immediately
 
 ## Development
