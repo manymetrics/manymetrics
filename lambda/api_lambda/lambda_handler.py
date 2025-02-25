@@ -147,7 +147,9 @@ def _extract_and_enrich_event(lambda_event: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(event, dict):
         raise BadRequestError("Bad Request")
 
-    event["server_event_time"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    event["server_event_time"] = (
+        datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    )
     event["ip_address"] = lambda_event["requestContext"]["identity"]["sourceIp"]
 
     return event

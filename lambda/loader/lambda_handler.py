@@ -55,6 +55,7 @@ SORT_ORDER = SortOrder(SortField(source_id=1, transform=IdentityTransform()))
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+
 def lambda_handler(event: dict, context: dict) -> None:
     catalog = load_catalog(
         "glue",
@@ -66,8 +67,12 @@ def lambda_handler(event: dict, context: dict) -> None:
         type="glue",
     )
 
-    _create_table_if_not_exists(catalog, DATABASE_NAME, EVENTS_TABLE_NAME, EVENTS_SCHEMA)
-    _create_table_if_not_exists(catalog, DATABASE_NAME, IDENTIFIES_TABLE_NAME, IDENTIFIES_SCHEMA)
+    _create_table_if_not_exists(
+        catalog, DATABASE_NAME, EVENTS_TABLE_NAME, EVENTS_SCHEMA
+    )
+    _create_table_if_not_exists(
+        catalog, DATABASE_NAME, IDENTIFIES_TABLE_NAME, IDENTIFIES_SCHEMA
+    )
 
     records = [_decode_record(record) for record in event.get("Records", [])]
     logger.info(f"Processing {records} records")
@@ -95,7 +100,9 @@ def _decode_record(record: dict) -> dict:
     return json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8"))
 
 
-def _create_table_if_not_exists(catalog, database_name: str, table_name: str, schema: dict) -> None:
+def _create_table_if_not_exists(
+    catalog, database_name: str, table_name: str, schema: dict
+) -> None:
     try:
         catalog.load_table(f"{database_name}.{table_name}")
         logger.info(f"Table {database_name}.{table_name} exists")
@@ -143,8 +150,12 @@ def _handle_events(table, events: list[dict]) -> None:
 def _handle_identifies(table, identifies: list[dict]) -> None:
     logger.info(f"Handling {len(identifies)} identifies")
     for identify in identifies:
-        identify["server_event_time"] = _convert_timestamp(identify["server_event_time"])
-        identify["client_event_time"] = _convert_timestamp(identify["client_event_time"])
+        identify["server_event_time"] = _convert_timestamp(
+            identify["server_event_time"]
+        )
+        identify["client_event_time"] = _convert_timestamp(
+            identify["client_event_time"]
+        )
         identify["event_time"] = identify["server_event_time"]
 
     df = pa.Table.from_pylist(identifies, schema=table.schema().as_arrow())

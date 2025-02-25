@@ -138,7 +138,9 @@ def test_kinesis_error(lambda_event_factory, sample_event, mock_kinesis):
 
 def test_response_class():
     response = Response(
-        statusCode=200, headers={"Content-Type": "application/json"}, body={"message": "test"}
+        statusCode=200,
+        headers={"Content-Type": "application/json"},
+        body={"message": "test"},
     )
 
     lambda_response = response.to_lambda_response()
